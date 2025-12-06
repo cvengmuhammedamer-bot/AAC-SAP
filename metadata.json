@@ -1,0 +1,5 @@
+{
+  "name": "Mitsubishi HVAC Inventory Manager",
+  "description": "Enterprise resource planning tool for Mitsubishi Electric agents to manage Local Stock, Pipeline, and SAP Booking availability.",
+  "requestFramePermissions": []
+}
