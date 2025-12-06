@@ -1,0 +1,2395 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AL TAGNIA AL HADYTHA (AAC) - Master Inventory System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .tab-active { border-bottom: 3px solid #2563eb; background: rgba(37, 99, 235, 0.1); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        .scroll-x::-webkit-scrollbar { height: 6px; }
+        .scroll-x::-webkit-scrollbar-thumb { background: #2563eb; border-radius: 3px; }
+        .upload-zone { border: 3px dashed #ccc; transition: all 0.3s; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #2563eb; background: rgba(37, 99, 235, 0.05); }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .quotation-preview { background: linear-gradient(to bottom, #fff 0%, #f8f8f8 100%); }
+        @media print {
+            body * { visibility: hidden; }
+            #quotationPreview, #quotationPreview * { visibility: visible; }
+            #quotationPreview { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%;
+                padding: 20px;
+                background: white;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+        .sub-header { font-size: 0.65rem; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center gap-4">
+                    <div class="bg-white p-2 rounded-lg">
+                        <div class="text-gray-900 font-bold text-xl">MITSUBISHI</div>
+                        <div class="text-xs text-gray-600">ELECTRIC</div>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">AL TAGNIA AL HADYTHA (AAC)</h1>
+                        <p class="text-gray-400 text-sm">Authorized Mitsubishi Electric Distributor in Libya</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="bg-white/10 backdrop-blur rounded-lg px-3 py-2">
+                        <p class="text-xs text-gray-400">Euro Rate</p>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="euroRate" value="5.35" step="0.01" class="w-20 bg-transparent text-white font-bold text-lg border-b border-white/30 focus:outline-none">
+                            <span class="text-sm">LYD</span>
+                        </div>
+                    </div>
+                    <button onclick="openImportModal()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold transition flex items-center gap-2">
+                        <i class="fas fa-file-excel"></i>
+                        <span class="hidden md:inline">Import Excel</span>
+                    </button>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-400" id="currentDate"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="bg-white shadow sticky top-0 z-40">
+        <div class="container mx-auto px-4">
+            <nav class="flex overflow-x-auto scroll-x">
+                <button onclick="showTab('master')" class="tab-btn tab-active px-6 py-4 font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap transition" data-tab="master">
+                    <i class="fas fa-th-large mr-2 text-blue-600"></i> Master Inventory
+                </button>
+                <button onclick="showTab('projects')" class="tab-btn px-6 py-4 font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap transition" data-tab="projects">
+                    <i class="fas fa-project-diagram mr-2 text-blue-600"></i> Project Sheet
+                </button>
+                <button onclick="showTab('quotation')" class="tab-btn px-6 py-4 font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap transition" data-tab="quotation">
+                    <i class="fas fa-file-invoice-dollar mr-2 text-blue-600"></i> Quotation
+                </button>
+                <button onclick="showTab('stock')" class="tab-btn px-6 py-4 font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap transition" data-tab="stock">
+                    <i class="fas fa-warehouse mr-2 text-blue-600"></i> Stock Libya
+                </button>
+                <button onclick="showTab('pipeline')" class="tab-btn px-6 py-4 font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap transition" data-tab="pipeline">
+                    <i class="fas fa-ship mr-2 text-blue-600"></i> PO Pipeline
+                </button>
+                <button onclick="showTab('sap')" class="tab-btn px-6 py-4 font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap transition" data-tab="sap">
+                    <i class="fas fa-cloud mr-2 text-blue-600"></i> SAP Availability
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        
+        <!-- Master Inventory Tab -->
+        <div id="master-tab" class="tab-content">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white border-2 border-gray-200 text-gray-800 rounded-xl p-4 shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">Stock Libya</p>
+                            <p class="text-3xl font-bold" id="totalLocalStock">0</p>
+                        </div>
+                        <i class="fas fa-warehouse text-4xl text-blue-600"></i>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-gray-200 text-gray-800 rounded-xl p-4 shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">In Pipeline</p>
+                            <p class="text-3xl font-bold" id="totalPipelineQty">0</p>
+                        </div>
+                        <i class="fas fa-ship text-4xl text-blue-600"></i>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-gray-200 text-gray-800 rounded-xl p-4 shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">SAP Available</p>
+                            <p class="text-3xl font-bold" id="totalSAPQty">0</p>
+                        </div>
+                        <i class="fas fa-cloud text-4xl text-blue-600"></i>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-gray-200 text-gray-800 rounded-xl p-4 shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">Active Projects</p>
+                            <p class="text-3xl font-bold" id="activeProjects">0</p>
+                        </div>
+                        <i class="fas fa-folder-open text-4xl text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="bg-white rounded-xl shadow p-4 mb-6">
+                <div class="flex flex-wrap gap-4 items-center">
+                    <div class="flex-1 min-w-[200px]">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="masterSearch" placeholder="Search by model or description..." 
+                                class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" onkeyup="filterMasterInventory()">
+                        </div>
+                    </div>
+                    <select id="masterTypeFilter" class="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" onchange="filterMasterInventory()">
+                        <option value="all">All Types</option>
+                        <option value="VRF">VRF Systems</option>
+                        <option value="DX">DX Units</option>
+                        <option value="Split">Split Units</option>
+                        <option value="Outdoor">Outdoor Units</option>
+                        <option value="Indoor">Indoor Units</option>
+                    </select>
+                    <select id="masterAvailFilter" class="px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none" onchange="filterMasterInventory()">
+                        <option value="all">All Status</option>
+                        <option value="instock">In Stock</option>
+                        <option value="pipeline">In Pipeline</option>
+                        <option value="sap">SAP Available</option>
+                        <option value="out">Out of Stock</option>
+                    </select>
+                    <button onclick="exportMasterInventory()" class="bg-gray-800 text-white px-4 py-3 rounded-lg hover:bg-gray-900 transition">
+                        <i class="fas fa-download mr-2"></i> Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- Master Inventory Table -->
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="masterTable">
+                        <thead class="bg-gray-900 text-white">
+                            <tr>
+                                <th class="text-left p-3 sticky left-0 bg-gray-900" rowspan="2">Model</th>
+                                <th class="text-left p-3" rowspan="2">Description</th>
+                                <th class="text-center p-3 bg-gray-800" rowspan="2">
+                                    <i class="fas fa-warehouse mr-1"></i> Stock
+                                </th>
+                                <th class="text-center p-3 bg-gray-700" colspan="3">
+                                    <i class="fas fa-ship mr-1"></i> PO Pipeline
+                                </th>
+                                <th class="text-center p-3 bg-blue-800" colspan="8">
+                                    <i class="fas fa-cloud mr-1"></i> SAP Availability (4 Months)
+                                </th>
+                                <th class="text-center p-3 bg-gray-800" rowspan="2">€ Price</th>
+                                <th class="text-center p-3 bg-gray-700" rowspan="2">LYD Price</th>
+                                <th class="text-center p-3 bg-gray-800" rowspan="2">Status</th>
+                                <th class="text-center p-3" rowspan="2">Action</th>
+                            </tr>
+                            <tr class="bg-gray-800 text-xs">
+                                <th class="p-2 bg-gray-700">Qty</th>
+                                <th class="p-2 bg-gray-700">Status</th>
+                                <th class="p-2 bg-gray-700">Shipping</th>
+                                <th class="p-2 bg-blue-700" id="masterMonth1">Month1</th>
+                                <th class="p-2 bg-blue-600 sub-header">Booked</th>
+                                <th class="p-2 bg-blue-700" id="masterMonth2">Month2</th>
+                                <th class="p-2 bg-blue-600 sub-header">Booked</th>
+                                <th class="p-2 bg-blue-700" id="masterMonth3">Month3</th>
+                                <th class="p-2 bg-blue-600 sub-header">Booked</th>
+                                <th class="p-2 bg-blue-700" id="masterMonth4">Month4</th>
+                                <th class="p-2 bg-blue-600 sub-header">Booked</th>
+                            </tr>
+                        </thead>
+                        <tbody id="masterTableBody">
+                            <tr>
+                                <td colspan="17" class="text-center py-10 text-gray-400">
+                                    <i class="fas fa-database text-4xl mb-3"></i>
+                                    <p>No data yet. Import Excel files to get started.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Sheet Tab -->
+        <div id="projects-tab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Project List -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold"><i class="fas fa-folder-open text-blue-600 mr-2"></i> Active Projects</h3>
+                            <button onclick="createNewProject()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus mr-2"></i> New Project
+                            </button>
+                        </div>
+                        <div class="space-y-4" id="projectsList">
+                            <p class="text-gray-400 text-center py-8">No projects yet. Create a new project to get started.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Products to Project -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow p-6 sticky top-20">
+                        <h3 class="text-lg font-bold mb-4"><i class="fas fa-plus-circle text-blue-600 mr-2"></i> Add Product to Project</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Select Project</label>
+                                <select id="selectedProject" class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none">
+                                    <option value="">-- Select Project --</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Model</label>
+                                <input type="text" id="addProductModel" placeholder="Search for model..." 
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none" 
+                                    oninput="searchProductForProject(this.value)">
+                                <div id="productSuggestions" class="mt-1 border rounded-lg hidden max-h-40 overflow-y-auto"></div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Required Quantity</label>
+                                <input type="number" id="addProductQty" placeholder="Quantity" min="1" value="1"
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none">
+                            </div>
+                            
+                            <div id="availabilityCheck" class="hidden bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-bold text-sm mb-2"><i class="fas fa-search text-blue-500 mr-1"></i> Availability Status:</h4>
+                                <div id="availabilityResult"></div>
+                            </div>
+                            
+                            <button onclick="addProductToProject()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                                <i class="fas fa-plus mr-2"></i> Add to Project
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quotation Tab -->
+        <div id="quotation-tab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Quotation Form -->
+                <div class="lg:col-span-1 no-print">
+                    <div class="bg-white rounded-xl shadow p-6 sticky top-20">
+                        <h3 class="text-lg font-bold mb-4"><i class="fas fa-file-invoice text-blue-600 mr-2"></i> Create Quotation</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Select Project</label>
+                                <select id="quotationProject" class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none" onchange="loadProjectForQuotation()">
+                                    <option value="">-- Select Project --</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Customer Name</label>
+                                <input type="text" id="quotationCustomer" placeholder="Customer name" 
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Phone Number</label>
+                                <input type="text" id="quotationPhone" placeholder="Phone number" 
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Email</label>
+                                <input type="email" id="quotationEmail" placeholder="Email address" 
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Discount %</label>
+                                <input type="number" id="quotationDiscount" placeholder="0" value="0" min="0" max="100"
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none" onchange="updateQuotation()">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Validity (Days)</label>
+                                <input type="number" id="quotationValidity" placeholder="30" value="30" min="1"
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold mb-1">Notes</label>
+                                <textarea id="quotationNotes" placeholder="Additional notes..." rows="3"
+                                    class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none"></textarea>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <button onclick="generateQuotation()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                                    <i class="fas fa-magic mr-2"></i> Generate
+                                </button>
+                                <button onclick="printQuotation()" class="bg-gray-800 text-white px-4 py-3 rounded-lg hover:bg-gray-900 transition">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quotation Preview -->
+                <div class="lg:col-span-2">
+                    <div id="quotationPreview" class="quotation-preview bg-white rounded-xl shadow-lg p-8 min-h-[600px]">
+                        <div class="text-center text-gray-400 py-20">
+                            <i class="fas fa-file-invoice-dollar text-6xl mb-4"></i>
+                            <p>Select a project to generate quotation</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Libya Tab -->
+        <div id="stock-tab" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold"><i class="fas fa-warehouse text-blue-600 mr-2"></i> Stock Libya</h3>
+                    <div class="flex gap-2">
+                        <button onclick="openImportModal('stock')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-file-excel mr-2"></i> Import Excel
+                        </button>
+                        <button onclick="openAddStockModal()" class="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900">
+                            <i class="fas fa-plus mr-2"></i> Add Manual
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-900 text-white">
+                            <tr>
+                                <th class="text-left p-3">Model</th>
+                                <th class="text-left p-3">Description</th>
+                                <th class="text-left p-3">Type</th>
+                                <th class="text-left p-3">Quantity</th>
+                                <th class="text-left p-3">Price €</th>
+                                <th class="text-left p-3">Status</th>
+                                <th class="text-left p-3">Last Update</th>
+                                <th class="text-left p-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-10 text-gray-400">
+                                    <i class="fas fa-box-open text-4xl mb-3"></i>
+                                    <p>No stock data. Import or add products manually.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline Tab -->
+        <div id="pipeline-tab" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold"><i class="fas fa-ship text-blue-600 mr-2"></i> PO Pipeline</h3>
+                    <div class="flex gap-2">
+                        <button onclick="openImportModal('pipeline')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-file-excel mr-2"></i> Import Excel
+                        </button>
+                        <button onclick="openAddPipelineModal()" class="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900">
+                            <i class="fas fa-plus mr-2"></i> Add Manual
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Pipeline Status Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white border-2 border-gray-300 rounded-lg p-4 text-center">
+                        <i class="fas fa-clock text-gray-600 text-2xl mb-2"></i>
+                        <p class="text-2xl font-bold text-gray-800" id="pipelinePending">0</p>
+                        <p class="text-sm text-gray-600">Pending</p>
+                    </div>
+                    <div class="bg-white border-2 border-gray-300 rounded-lg p-4 text-center">
+                        <i class="fas fa-cog text-gray-600 text-2xl mb-2"></i>
+                        <p class="text-2xl font-bold text-gray-800" id="pipelineProcessing">0</p>
+                        <p class="text-sm text-gray-600">Processing</p>
+                    </div>
+                    <div class="bg-white border-2 border-blue-400 rounded-lg p-4 text-center">
+                        <i class="fas fa-ship text-blue-600 text-2xl mb-2"></i>
+                        <p class="text-2xl font-bold text-blue-600" id="pipelineShipped">0</p>
+                        <p class="text-sm text-blue-600">Shipped</p>
+                    </div>
+                    <div class="bg-white border-2 border-gray-300 rounded-lg p-4 text-center">
+                        <i class="fas fa-check-circle text-gray-600 text-2xl mb-2"></i>
+                        <p class="text-2xl font-bold text-gray-800" id="pipelineDelivered">0</p>
+                        <p class="text-sm text-gray-600">Delivered</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-900 text-white">
+                            <tr>
+                                <th class="text-left p-3">PO Number</th>
+                                <th class="text-left p-3">Model</th>
+                                <th class="text-left p-3">Quantity</th>
+                                <th class="text-left p-3">Order Date</th>
+                                <th class="text-left p-3">ETA</th>
+                                <th class="text-left p-3">Shipping</th>
+                                <th class="text-left p-3">Status</th>
+                                <th class="text-left p-3">Notes</th>
+                                <th class="text-left p-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pipelineTableBody">
+                            <tr>
+                                <td colspan="9" class="text-center py-10 text-gray-400">
+                                    <i class="fas fa-shipping-fast text-4xl mb-3"></i>
+                                    <p>No pipeline orders. Import or add orders manually.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SAP Availability Tab -->
+        <div id="sap-tab" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold"><i class="fas fa-cloud text-blue-600 mr-2"></i> SAP Mitsubishi - Available for Booking</h3>
+                    <div class="flex gap-2">
+                        <button onclick="openImportModal('sap')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-file-excel mr-2"></i> Import SAP Excel
+                        </button>
+                        <button onclick="openSAPPortal()" class="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900">
+                            <i class="fas fa-external-link-alt mr-2"></i> Open SAP Portal
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Month Cards - 4 Months -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="sapMonthCards">
+                    <div class="bg-gray-100 rounded-xl p-4 text-center">
+                        <p class="text-gray-500">No SAP data imported yet</p>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex gap-4 mb-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 bg-gray-100 border-2 border-gray-400 rounded"></span>
+                        <span>Available</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 bg-blue-100 border-2 border-blue-400 rounded"></span>
+                        <span>Booked</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-900 text-white">
+                            <tr>
+                                <th class="text-left p-3" rowspan="2">Model</th>
+                                <th class="text-left p-3" rowspan="2">Description</th>
+                                <th class="text-center p-2" colspan="2" id="sapMonth1Header">Month 1</th>
+                                <th class="text-center p-2" colspan="2" id="sapMonth2Header">Month 2</th>
+                                <th class="text-center p-2" colspan="2" id="sapMonth3Header">Month 3</th>
+                                <th class="text-center p-2" colspan="2" id="sapMonth4Header">Month 4</th>
+                                <th class="text-left p-3" rowspan="2">Price €</th>
+                                <th class="text-left p-3" rowspan="2">Action</th>
+                            </tr>
+                            <tr class="bg-gray-800 text-xs">
+                                <th class="p-2">Avail</th>
+                                <th class="p-2 bg-blue-800">Booked</th>
+                                <th class="p-2">Avail</th>
+                                <th class="p-2 bg-blue-800">Booked</th>
+                                <th class="p-2">Avail</th>
+                                <th class="p-2 bg-blue-800">Booked</th>
+                                <th class="p-2">Avail</th>
+                                <th class="p-2 bg-blue-800">Booked</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sapTableBody">
+                            <tr>
+                                <td colspan="12" class="text-center py-10 text-gray-400">
+                                    <i class="fas fa-cloud-download-alt text-4xl mb-3"></i>
+                                    <p>No SAP data. Import SAP Excel file to view availability.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-4 mt-10">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm text-gray-400">© 2024 AL TAGNIA AL HADYTHA (AAC) - Authorized Mitsubishi Electric Distributor in Libya</p>
+        </div>
+    </footer>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
+            <div class="bg-gray-900 text-white p-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold"><i class="fas fa-file-excel mr-2"></i> Import Excel File</h3>
+                <button onclick="closeImportModal()" class="text-2xl hover:text-gray-300">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[75vh]">
+                <!-- Upload Step -->
+                <div id="uploadStep" class="fade-in">
+                    <div class="mb-4">
+                        <label class="font-bold block mb-2">Data Type:</label>
+                        <select id="importType" class="w-full p-3 border-2 rounded-lg focus:border-blue-500 focus:outline-none" onchange="updateImportHints()">
+                            <option value="stock">📦 Stock Libya - Local Inventory</option>
+                            <option value="pipeline">🚚 PO Pipeline - Purchase Orders</option>
+                            <option value="sap">☁️ SAP Availability - Available for Booking (4 Months)</option>
+                        </select>
+                    </div>
+
+                    <!-- Import Hints -->
+                    <div id="importHints" class="bg-gray-100 border-l-4 border-blue-500 p-4 rounded mb-4">
+                        <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-info-circle mr-1"></i> Import Instructions:</h4>
+                        <div id="hintsContent"></div>
+                    </div>
+
+                    <div id="uploadZone" class="upload-zone rounded-2xl p-10 text-center cursor-pointer mb-4" 
+                         onclick="document.getElementById('excelFile').click()">
+                        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(event)">
+                        <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+                        <p class="text-xl font-bold text-gray-600 mb-2">Drag & drop file here or click to browse</p>
+                        <p class="text-gray-500">Supported: .xlsx, .xls, .csv</p>
+                    </div>
+
+                    <div id="fileInfo" class="hidden bg-gray-50 rounded-lg p-4 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-file-excel text-blue-600 text-3xl"></i>
+                                <div>
+                                    <p class="font-bold" id="fileName">filename.xlsx</p>
+                                    <p class="text-sm text-gray-500" id="fileSize">0 KB</p>
+                                </div>
+                            </div>
+                            <button onclick="clearFile()" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times-circle text-2xl"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="parseBtn" onclick="parseExcelFile()" disabled 
+                            class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-cogs mr-2"></i> Preview Data
+                    </button>
+                </div>
+
+                <!-- Preview Step -->
+                <div id="previewStep" class="hidden fade-in">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold text-lg"><i class="fas fa-eye text-blue-500 mr-2"></i> Data Preview</h4>
+                        <button onclick="backToUpload()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-arrow-left mr-1"></i> Back
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-100 border-l-4 border-blue-500 p-3 rounded mb-4">
+                        <p><strong>Rows:</strong> <span id="rowCount">0</span></p>
+                        <p><strong>Columns:</strong> <span id="colCount">0</span></p>
+                    </div>
+
+                    <div id="columnMapping" class="mb-4">
+                        <h5 class="font-bold mb-2"><i class="fas fa-columns text-blue-500 mr-2"></i> Column Mapping:</h5>
+                        <div id="mappingFields" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto mb-4 max-h-[250px] overflow-y-auto border rounded-lg">
+                        <table class="w-full text-sm" id="previewTable">
+                            <thead class="bg-gray-800 text-white sticky top-0">
+                                <tr id="previewHeader"></tr>
+                            </thead>
+                            <tbody id="previewBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="confirmImport()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                            <i class="fas fa-check-circle mr-2"></i> Confirm Import
+                        </button>
+                        <button onclick="closeImportModal()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg font-bold hover:bg-gray-600 transition">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Success Step -->
+                <div id="successStep" class="hidden fade-in text-center py-10">
+                    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-check text-blue-600 text-5xl"></i>
+                    </div>
+                    <h4 class="text-2xl font-bold text-gray-800 mb-2">Import Successful!</h4>
+                    <p class="text-gray-500 mb-6" id="importSummary">Imported 0 rows</p>
+                    <button onclick="closeImportModal()" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                        <i class="fas fa-check mr-2"></i> Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Stock Modal -->
+    <div id="addStockModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg">
+            <div class="bg-gray-900 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="text-xl font-bold"><i class="fas fa-plus mr-2"></i> Add Stock Item</h3>
+                <button onclick="closeModal('addStockModal')" class="text-2xl hover:text-gray-300">&times;</button>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <input type="text" id="newStockModel" placeholder="Model (e.g. PKA-M35KA)" class="w-full p-3 border rounded-lg">
+                    <input type="text" id="newStockDesc" placeholder="Description" class="w-full p-3 border rounded-lg">
+                    <select id="newStockType" class="w-full p-3 border rounded-lg">
+                        <option value="VRF">VRF System</option>
+                        <option value="DX">DX Unit</option>
+                        <option value="Split">Split Unit</option>
+                        <option value="Outdoor">Outdoor Unit</option>
+                        <option value="Indoor">Indoor Unit</option>
+                    </select>
+                    <input type="number" id="newStockQty" placeholder="Quantity" class="w-full p-3 border rounded-lg">
+                    <input type="number" id="newStockPrice" placeholder="Price in Euro" step="0.01" class="w-full p-3 border rounded-lg">
+                    <button onclick="addStock()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">
+                        <i class="fas fa-save mr-2"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Pipeline Modal -->
+    <div id="addPipelineModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg">
+            <div class="bg-gray-900 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="text-xl font-bold"><i class="fas fa-ship mr-2"></i> Add Pipeline Order</h3>
+                <button onclick="closeModal('addPipelineModal')" class="text-2xl hover:text-gray-300">&times;</button>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <input type="text" id="newPipelinePO" placeholder="PO Number" class="w-full p-3 border rounded-lg">
+                    <input type="text" id="newPipelineModel" placeholder="Model" class="w-full p-3 border rounded-lg">
+                    <input type="number" id="newPipelineQty" placeholder="Quantity" class="w-full p-3 border rounded-lg">
+                    <input type="date" id="newPipelineETA" class="w-full p-3 border rounded-lg">
+                    <select id="newPipelineShipping" class="w-full p-3 border rounded-lg">
+                        <option value="sea">🚢 Sea Freight</option>
+                        <option value="air">✈️ Air Freight</option>
+                    </select>
+                    <select id="newPipelineStatus" class="w-full p-3 border rounded-lg">
+                        <option value="pending">⏳ Pending</option>
+                        <option value="processing">⚙️ Processing</option>
+                        <option value="shipped">🚢 Shipped</option>
+                        <option value="delivered">✅ Delivered</option>
+                    </select>
+                    <input type="text" id="newPipelineNotes" placeholder="Notes" class="w-full p-3 border rounded-lg">
+                    <button onclick="addPipeline()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">
+                        <i class="fas fa-save mr-2"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Project Modal -->
+    <div id="newProjectModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg">
+            <div class="bg-gray-900 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="text-xl font-bold"><i class="fas fa-folder-plus mr-2"></i> New Project</h3>
+                <button onclick="closeModal('newProjectModal')" class="text-2xl hover:text-gray-300">&times;</button>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <input type="text" id="newProjectName" placeholder="Project Name" class="w-full p-3 border rounded-lg">
+                    <input type="text" id="newProjectCustomer" placeholder="Customer Name" class="w-full p-3 border rounded-lg">
+                    <input type="text" id="newProjectLocation" placeholder="Location" class="w-full p-3 border rounded-lg">
+                    <textarea id="newProjectNotes" placeholder="Notes" rows="3" class="w-full p-3 border rounded-lg"></textarea>
+                    <button onclick="saveNewProject()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">
+                        <i class="fas fa-save mr-2"></i> Create Project
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Project Modal -->
+    <div id="viewProjectModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div class="bg-gray-900 text-white p-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold" id="viewProjectTitle"><i class="fas fa-folder-open mr-2"></i> Project Details</h3>
+                <button onclick="closeModal('viewProjectModal')" class="text-2xl hover:text-gray-300">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[70vh]" id="viewProjectContent">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ DATA ============
+        let stockData = [];
+        let pipelineData = [];
+        let sapData = [];
+        let projectsData = [];
+
+        // Dynamic month names based on current date
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const currentMonth = new Date().getMonth();
+        
+        // Get 4 consecutive months
+        const sapMonths = [
+            monthNames[currentMonth],
+            monthNames[(currentMonth + 1) % 12],
+            monthNames[(currentMonth + 2) % 12],
+            monthNames[(currentMonth + 3) % 12]
+        ];
+
+        // Excel Import Variables
+        let parsedData = [];
+        let excelHeaders = [];
+        let selectedFile = null;
+        let selectedProductForProject = null;
+
+        // ============ INITIALIZATION ============
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDate();
+            updateImportHints();
+            renderAll();
+            setupDragDrop();
+        });
+
+        function updateDate() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
+        }
+
+        function renderAll() {
+            renderMasterInventory();
+            renderStock();
+            renderPipeline();
+            renderSAP();
+            renderProjects();
+            updateSummaryCards();
+            updateProjectDropdowns();
+        }
+
+        function updateSummaryCards() {
+            document.getElementById('totalLocalStock').textContent = stockData.reduce((sum, item) => sum + item.qty, 0);
+            document.getElementById('totalPipelineQty').textContent = pipelineData.filter(p => p.status !== 'delivered').reduce((sum, item) => sum + item.qty, 0);
+            const totalSAP = sapData.reduce((sum, item) => sum + (item.month1Avail || 0) + (item.month2Avail || 0) + (item.month3Avail || 0) + (item.month4Avail || 0), 0);
+            document.getElementById('totalSAPQty').textContent = totalSAP;
+            document.getElementById('activeProjects').textContent = projectsData.filter(p => p.status === 'active').length;
+        }
+
+        // ============ TAB NAVIGATION ============
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+            
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('tab-active');
+        }
+
+        // ============ MASTER INVENTORY ============
+        function getMasterInventoryData() {
+            const masterData = [];
+            const allModels = new Set();
+
+            stockData.forEach(item => allModels.add(item.model));
+            pipelineData.forEach(item => allModels.add(item.model));
+            sapData.forEach(item => allModels.add(item.model));
+
+            allModels.forEach(model => {
+                const stock = stockData.find(s => s.model === model);
+                const pipeline = pipelineData.filter(p => p.model === model && p.status !== 'delivered');
+                const sap = sapData.find(s => s.model === model);
+
+                const totalPipelineQty = pipeline.reduce((sum, p) => sum + p.qty, 0);
+                const pipelineStatus = pipeline.length > 0 ? pipeline[0].status : null;
+                const pipelineShipping = pipeline.length > 0 ? pipeline[0].shipping : null;
+
+                masterData.push({
+                    model: model,
+                    desc: stock?.desc || sap?.desc || '',
+                    type: stock?.type || sap?.type || '',
+                    stockQty: stock?.qty || 0,
+                    pipelineQty: totalPipelineQty,
+                    pipelineStatus: pipelineStatus,
+                    pipelineShipping: pipelineShipping,
+                    month1Avail: sap?.month1Avail || 0,
+                    month1Booked: sap?.month1Booked || 0,
+                    month2Avail: sap?.month2Avail || 0,
+                    month2Booked: sap?.month2Booked || 0,
+                    month3Avail: sap?.month3Avail || 0,
+                    month3Booked: sap?.month3Booked || 0,
+                    month4Avail: sap?.month4Avail || 0,
+                    month4Booked: sap?.month4Booked || 0,
+                    price: stock?.price || sap?.price || 0
+                });
+            });
+
+            return masterData;
+        }
+
+        function renderMasterInventory() {
+            // Update month headers
+            document.getElementById('masterMonth1').textContent = sapMonths[0];
+            document.getElementById('masterMonth2').textContent = sapMonths[1];
+            document.getElementById('masterMonth3').textContent = sapMonths[2];
+            document.getElementById('masterMonth4').textContent = sapMonths[3];
+
+            const data = getMasterInventoryData();
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            const tbody = document.getElementById('masterTableBody');
+
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="17" class="text-center py-10 text-gray-400">
+                            <i class="fas fa-database text-4xl mb-3"></i>
+                            <p>No data yet. Import Excel files to get started.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                const availability = getAvailabilityStatus(item);
+                const priceEUR = item.price;
+                const priceLYD = (item.price * euroRate).toFixed(2);
+
+                return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2 font-bold text-gray-900 sticky left-0 bg-white text-sm">${item.model}</td>
+                    <td class="p-2 text-xs text-gray-600">${item.desc}</td>
+                    <td class="p-2 text-center ${item.stockQty > 0 ? 'bg-gray-100' : 'bg-white'}">
+                        <span class="font-bold ${item.stockQty > 0 ? 'text-gray-900' : 'text-gray-400'}">${item.stockQty}</span>
+                    </td>
+                    <td class="p-2 text-center ${item.pipelineQty > 0 ? 'bg-blue-50' : ''}">
+                        <span class="font-bold ${item.pipelineQty > 0 ? 'text-blue-600' : 'text-gray-400'}">${item.pipelineQty}</span>
+                    </td>
+                    <td class="p-2 text-center text-xs">${item.pipelineStatus ? getPipelineStatusBadge(item.pipelineStatus) : '-'}</td>
+                    <td class="p-2 text-center text-xs">${item.pipelineShipping ? getShippingBadge(item.pipelineShipping) : '-'}</td>
+                    <td class="p-2 text-center bg-gray-50"><span class="text-gray-800 font-bold">${item.month1Avail}</span></td>
+                    <td class="p-2 text-center bg-blue-50"><span class="text-blue-700">${item.month1Booked}</span></td>
+                    <td class="p-2 text-center bg-gray-50"><span class="text-gray-800 font-bold">${item.month2Avail}</span></td>
+                    <td class="p-2 text-center bg-blue-50"><span class="text-blue-700">${item.month2Booked}</span></td>
+                    <td class="p-2 text-center bg-gray-50"><span class="text-gray-800 font-bold">${item.month3Avail}</span></td>
+                    <td class="p-2 text-center bg-blue-50"><span class="text-blue-700">${item.month3Booked}</span></td>
+                    <td class="p-2 text-center bg-gray-50"><span class="text-gray-800 font-bold">${item.month4Avail}</span></td>
+                    <td class="p-2 text-center bg-blue-50"><span class="text-blue-700">${item.month4Booked}</span></td>
+                    <td class="p-2 text-center font-bold text-sm">€${priceEUR}</td>
+                    <td class="p-2 text-center font-bold text-blue-600 text-sm">${priceLYD}</td>
+                    <td class="p-2 text-center">${availability.badge}</td>
+                    <td class="p-2 text-center">
+                        <button onclick="addToProjectFromMaster('${item.model}')" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700" title="Add to Project">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function getAvailabilityStatus(item) {
+            const totalSAPAvail = (item.month1Avail || 0) + (item.month2Avail || 0) + (item.month3Avail || 0) + (item.month4Avail || 0);
+            
+            if (item.stockQty > 0) {
+                return { status: 'stock', badge: '<span class="bg-gray-800 text-white px-2 py-1 rounded-full text-xs">Stock ✓</span>' };
+            } else if (item.pipelineQty > 0) {
+                return { status: 'pipeline', badge: '<span class="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">Pipeline 🚢</span>' };
+            } else if (totalSAPAvail > 0) {
+                return { status: 'sap', badge: '<span class="bg-gray-600 text-white px-2 py-1 rounded-full text-xs">SAP ☁️</span>' };
+            }
+            return { status: 'out', badge: '<span class="bg-white text-gray-800 border-2 border-gray-300 px-2 py-1 rounded-full text-xs">Out of Stock</span>' };
+        }
+
+        function filterMasterInventory() {
+            const search = document.getElementById('masterSearch').value.toLowerCase();
+            const typeFilter = document.getElementById('masterTypeFilter').value;
+            const availFilter = document.getElementById('masterAvailFilter').value;
+
+            const rows = document.querySelectorAll('#masterTableBody tr');
+            rows.forEach(row => {
+                if (row.cells.length < 3) return;
+                const model = row.cells[0].textContent.toLowerCase();
+                const desc = row.cells[1].textContent.toLowerCase();
+                const stockQty = parseInt(row.cells[2].textContent) || 0;
+                const pipelineQty = parseInt(row.cells[3].textContent) || 0;
+                const sapMonth1 = parseInt(row.cells[6].textContent) || 0;
+
+                let matchSearch = model.includes(search) || desc.includes(search);
+                let matchType = typeFilter === 'all' || desc.toLowerCase().includes(typeFilter.toLowerCase());
+                let matchAvail = true;
+
+                if (availFilter === 'instock') matchAvail = stockQty > 0;
+                else if (availFilter === 'pipeline') matchAvail = pipelineQty > 0;
+                else if (availFilter === 'sap') matchAvail = sapMonth1 > 0;
+                else if (availFilter === 'out') matchAvail = stockQty === 0 && pipelineQty === 0 && sapMonth1 === 0;
+
+                row.style.display = matchSearch && matchType && matchAvail ? '' : 'none';
+            });
+        }
+
+        // ============ STOCK ============
+        function renderStock() {
+            const tbody = document.getElementById('stockTableBody');
+            
+            if (stockData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-10 text-gray-400">
+                            <i class="fas fa-box-open text-4xl mb-3"></i>
+                            <p>No stock data. Import or add products manually.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = stockData.map(item => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-bold text-gray-900">${item.model}</td>
+                    <td class="p-3 text-gray-600">${item.desc}</td>
+                    <td class="p-3"><span class="bg-gray-200 px-2 py-1 rounded text-gray-700">${item.type}</span></td>
+                    <td class="p-3 font-bold">${item.qty}</td>
+                    <td class="p-3 font-bold">€${item.price}</td>
+                    <td class="p-3">${getStockStatusBadge(item.qty)}</td>
+                    <td class="p-3 text-gray-500 text-sm">${item.lastUpdate}</td>
+                    <td class="p-3">
+                        <button onclick="editStock('${item.model}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteStock('${item.model}')" class="text-gray-600 hover:text-gray-800"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStockStatusBadge(qty) {
+            if (qty === 0) return '<span class="bg-white text-gray-800 border-2 border-gray-300 px-3 py-1 rounded-full text-sm">Out</span>';
+            if (qty <= 10) return '<span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">Low</span>';
+            return '<span class="bg-gray-800 text-white px-3 py-1 rounded-full text-sm">Available</span>';
+        }
+
+        // ============ PIPELINE ============
+        function renderPipeline() {
+            const tbody = document.getElementById('pipelineTableBody');
+            
+            if (pipelineData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-10 text-gray-400">
+                            <i class="fas fa-shipping-fast text-4xl mb-3"></i>
+                            <p>No pipeline orders. Import or add orders manually.</p>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('pipelinePending').textContent = '0';
+                document.getElementById('pipelineProcessing').textContent = '0';
+                document.getElementById('pipelineShipped').textContent = '0';
+                document.getElementById('pipelineDelivered').textContent = '0';
+                return;
+            }
+
+            tbody.innerHTML = pipelineData.map(item => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-bold">${item.poNumber}</td>
+                    <td class="p-3 font-bold text-gray-900">${item.model}</td>
+                    <td class="p-3 font-bold">${item.qty}</td>
+                    <td class="p-3 text-gray-600">${item.orderDate}</td>
+                    <td class="p-3 text-gray-600">${item.eta}</td>
+                    <td class="p-3">${getShippingBadge(item.shipping)}</td>
+                    <td class="p-3">${getPipelineStatusBadge(item.status)}</td>
+                    <td class="p-3 text-sm text-gray-600">${item.notes}</td>
+                    <td class="p-3">
+                        <button onclick="editPipeline('${item.poNumber}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                        <button onclick="markAsDelivered('${item.poNumber}')" class="text-gray-600 hover:text-gray-800" title="Mark as Delivered"><i class="fas fa-check"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('pipelinePending').textContent = pipelineData.filter(p => p.status === 'pending').length;
+            document.getElementById('pipelineProcessing').textContent = pipelineData.filter(p => p.status === 'processing').length;
+            document.getElementById('pipelineShipped').textContent = pipelineData.filter(p => p.status === 'shipped').length;
+            document.getElementById('pipelineDelivered').textContent = pipelineData.filter(p => p.status === 'delivered').length;
+        }
+
+        function getPipelineStatusBadge(status) {
+            const badges = {
+                'pending': '<span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">⏳ Pending</span>',
+                'processing': '<span class="bg-gray-300 text-gray-800 px-2 py-1 rounded-full text-xs">⚙️ Processing</span>',
+                'shipped': '<span class="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">🚢 Shipped</span>',
+                'delivered': '<span class="bg-gray-800 text-white px-2 py-1 rounded-full text-xs">✅ Delivered</span>',
+            };
+            return badges[status] || status;
+        }
+
+        function getShippingBadge(shipping) {
+            if (shipping === 'sea') return '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">🚢 Sea</span>';
+            if (shipping === 'air') return '<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">✈️ Air</span>';
+            return shipping || '-';
+        }
+
+        function markAsDelivered(poNumber) {
+            const item = pipelineData.find(p => p.poNumber === poNumber);
+            if (item && confirm(`Transfer ${item.model} (${item.qty} units) to Stock?`)) {
+                item.status = 'delivered';
+                
+                const stockItem = stockData.find(s => s.model === item.model);
+                if (stockItem) {
+                    stockItem.qty += item.qty;
+                    stockItem.lastUpdate = new Date().toISOString().split('T')[0];
+                } else {
+                    stockData.push({
+                        model: item.model,
+                        desc: '',
+                        type: 'VRF',
+                        qty: item.qty,
+                        price: 0,
+                        lastUpdate: new Date().toISOString().split('T')[0]
+                    });
+                }
+
+                renderAll();
+                alert('Transferred to stock successfully!');
+            }
+        }
+
+        // ============ SAP ============
+        function renderSAP() {
+            // Update month headers
+            document.getElementById('sapMonth1Header').textContent = sapMonths[0];
+            document.getElementById('sapMonth2Header').textContent = sapMonths[1];
+            document.getElementById('sapMonth3Header').textContent = sapMonths[2];
+            document.getElementById('sapMonth4Header').textContent = sapMonths[3];
+
+            if (sapData.length === 0) {
+                document.getElementById('sapMonthCards').innerHTML = `
+                    <div class="col-span-4 bg-gray-100 rounded-xl p-4 text-center">
+                        <p class="text-gray-500">No SAP data imported yet</p>
+                    </div>
+                `;
+                document.getElementById('sapTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="12" class="text-center py-10 text-gray-400">
+                            <i class="fas fa-cloud-download-alt text-4xl mb-3"></i>
+                            <p>No SAP data. Import SAP Excel file to view availability.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Month cards with totals
+            const totals = sapData.reduce((acc, item) => {
+                acc.month1Avail += item.month1Avail || 0;
+                acc.month1Booked += item.month1Booked || 0;
+                acc.month2Avail += item.month2Avail || 0;
+                acc.month2Booked += item.month2Booked || 0;
+                acc.month3Avail += item.month3Avail || 0;
+                acc.month3Booked += item.month3Booked || 0;
+                acc.month4Avail += item.month4Avail || 0;
+                acc.month4Booked += item.month4Booked || 0;
+                return acc;
+            }, { month1Avail: 0, month1Booked: 0, month2Avail: 0, month2Booked: 0, month3Avail: 0, month3Booked: 0, month4Avail: 0, month4Booked: 0 });
+
+            document.getElementById('sapMonthCards').innerHTML = `
+                <div class="bg-white border-2 border-gray-300 text-gray-800 rounded-xl p-4 shadow">
+                    <p class="text-sm text-gray-500">${sapMonths[0]}</p>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-2xl font-bold">${totals.month1Avail}</p>
+                            <p class="text-xs text-gray-500">Available</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-blue-600">${totals.month1Booked}</p>
+                            <p class="text-xs text-gray-500">Booked</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-gray-300 text-gray-800 rounded-xl p-4 shadow">
+                    <p class="text-sm text-gray-500">${sapMonths[1]}</p>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-2xl font-bold">${totals.month2Avail}</p>
+                            <p class="text-xs text-gray-500">Available</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-blue-600">${totals.month2Booked}</p>
+                            <p class="text-xs text-gray-500">Booked</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-gray-300 text-gray-800 rounded-xl p-4 shadow">
+                    <p class="text-sm text-gray-500">${sapMonths[2]}</p>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-2xl font-bold">${totals.month3Avail}</p>
+                            <p class="text-xs text-gray-500">Available</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-blue-600">${totals.month3Booked}</p>
+                            <p class="text-xs text-gray-500">Booked</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-gray-300 text-gray-800 rounded-xl p-4 shadow">
+                    <p class="text-sm text-gray-500">${sapMonths[3]}</p>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-2xl font-bold">${totals.month4Avail}</p>
+                            <p class="text-xs text-gray-500">Available</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-blue-600">${totals.month4Booked}</p>
+                            <p class="text-xs text-gray-500">Booked</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const tbody = document.getElementById('sapTableBody');
+            tbody.innerHTML = sapData.map(item => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-bold text-gray-900">${item.model}</td>
+                    <td class="p-3 text-sm text-gray-600">${item.desc}</td>
+                    <td class="p-2 text-center bg-gray-50 font-bold text-gray-800">${item.month1Avail || 0}</td>
+                    <td class="p-2 text-center bg-blue-50 text-blue-700">${item.month1Booked || 0}</td>
+                    <td class="p-2 text-center bg-gray-50 font-bold text-gray-800">${item.month2Avail || 0}</td>
+                    <td class="p-2 text-center bg-blue-50 text-blue-700">${item.month2Booked || 0}</td>
+                    <td class="p-2 text-center bg-gray-50 font-bold text-gray-800">${item.month3Avail || 0}</td>
+                    <td class="p-2 text-center bg-blue-50 text-blue-700">${item.month3Booked || 0}</td>
+                    <td class="p-2 text-center bg-gray-50 font-bold text-gray-800">${item.month4Avail || 0}</td>
+                    <td class="p-2 text-center bg-blue-50 text-blue-700">${item.month4Booked || 0}</td>
+                    <td class="p-3 font-bold">€${item.price || 0}</td>
+                    <td class="p-3">
+                        <button onclick="bookFromSAP('${item.model}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                            <i class="fas fa-cart-plus mr-1"></i> Book
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function bookFromSAP(model) {
+            alert(`Opening SAP Portal to book ${model}...`);
+        }
+
+        function openSAPPortal() {
+            window.open('https://sap.mitsubishielectric.com', '_blank');
+        }
+
+        // ============ PROJECTS ============
+        function renderProjects() {
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            const container = document.getElementById('projectsList');
+
+            if (projectsData.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">No projects yet. Create a new project to get started.</p>';
+                return;
+            }
+
+            container.innerHTML = projectsData.map(project => {
+                const totalEUR = project.products.reduce((sum, p) => {
+                    const item = stockData.find(s => s.model === p.model) || sapData.find(s => s.model === p.model);
+                    return sum + (item?.price || 0) * p.qty;
+                }, 0);
+                const totalLYD = (totalEUR * euroRate).toFixed(2);
+
+                return `
+                <div class="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 transition cursor-pointer" onclick="viewProject('${project.id}')">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h4 class="font-bold text-lg">${project.name}</h4>
+                            <p class="text-sm text-gray-500">${project.customer} - ${project.location}</p>
+                        </div>
+                        <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">${project.status === 'active' ? 'Active' : 'Completed'}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-500"><i class="fas fa-box mr-1"></i> ${project.products.length} products</span>
+                        <span class="font-bold text-blue-600">€${totalEUR.toLocaleString()} | ${Number(totalLYD).toLocaleString()} LYD</span>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function createNewProject() {
+            document.getElementById('newProjectModal').classList.remove('hidden');
+        }
+
+        function saveNewProject() {
+            const name = document.getElementById('newProjectName').value;
+            const customer = document.getElementById('newProjectCustomer').value;
+            const location = document.getElementById('newProjectLocation').value;
+
+            if (!name || !customer) {
+                alert('Please enter project name and customer');
+                return;
+            }
+
+            const newProject = {
+                id: 'PRJ-' + String(projectsData.length + 1).padStart(3, '0'),
+                name: name,
+                customer: customer,
+                location: location,
+                status: 'active',
+                createdAt: new Date().toISOString().split('T')[0],
+                products: []
+            };
+
+            projectsData.push(newProject);
+            renderProjects();
+            updateProjectDropdowns();
+            closeModal('newProjectModal');
+            
+            document.getElementById('newProjectName').value = '';
+            document.getElementById('newProjectCustomer').value = '';
+            document.getElementById('newProjectLocation').value = '';
+            document.getElementById('newProjectNotes').value = '';
+            
+            alert('Project created successfully!');
+        }
+
+        function updateProjectDropdowns() {
+            const options = '<option value="">-- Select Project --</option>' + 
+                projectsData.filter(p => p.status === 'active').map(p => 
+                    `<option value="${p.id}">${p.name} - ${p.customer}</option>`
+                ).join('');
+
+            document.getElementById('selectedProject').innerHTML = options;
+            document.getElementById('quotationProject').innerHTML = options;
+        }
+
+        function searchProductForProject(query) {
+            const suggestions = document.getElementById('productSuggestions');
+            if (query.length < 2) {
+                suggestions.classList.add('hidden');
+                return;
+            }
+
+            const masterData = getMasterInventoryData();
+            const matches = masterData.filter(item => 
+                item.model.toLowerCase().includes(query.toLowerCase()) ||
+                item.desc.toLowerCase().includes(query.toLowerCase())
+            ).slice(0, 5);
+
+            if (matches.length === 0) {
+                suggestions.classList.add('hidden');
+                return;
+            }
+
+            suggestions.innerHTML = matches.map(item => {
+                const availability = getAvailabilityStatus(item);
+                return `
+                <div class="p-2 hover:bg-gray-100 cursor-pointer border-b" onclick="selectProductForProject('${item.model}')">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold">${item.model}</span>
+                        ${availability.badge}
+                    </div>
+                    <p class="text-xs text-gray-500">${item.desc}</p>
+                </div>
+            `}).join('');
+
+            suggestions.classList.remove('hidden');
+        }
+
+        function selectProductForProject(model) {
+            document.getElementById('addProductModel').value = model;
+            document.getElementById('productSuggestions').classList.add('hidden');
+            selectedProductForProject = model;
+            checkProductAvailability(model);
+        }
+
+        function checkProductAvailability(model) {
+            const qty = parseInt(document.getElementById('addProductQty').value) || 1;
+            const masterData = getMasterInventoryData();
+            const item = masterData.find(m => m.model === model);
+
+            if (!item) {
+                document.getElementById('availabilityCheck').classList.add('hidden');
+                return;
+            }
+
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            const totalSAPAvail = item.month1Avail + item.month2Avail + item.month3Avail + item.month4Avail;
+            
+            let sourceText = '';
+            if (item.stockQty >= qty) {
+                sourceText = `<span class="text-gray-800 font-bold">✓ Available in Stock (${item.stockQty} units)</span>`;
+            } else if (item.pipelineQty >= qty) {
+                sourceText = `<span class="text-blue-600 font-bold">🚢 Available from Pipeline (${item.pipelineQty} units)</span>`;
+            } else if (totalSAPAvail >= qty) {
+                sourceText = `<span class="text-gray-600 font-bold">☁️ Available for SAP Booking (${totalSAPAvail} units)</span>`;
+            } else {
+                sourceText = `<span class="text-gray-500 font-bold">✗ Quantity not available</span>`;
+            }
+
+            const html = `
+                <p class="mb-2">${sourceText}</p>
+                <div class="grid grid-cols-3 gap-2 text-xs text-center">
+                    <div class="bg-gray-100 p-2 rounded">
+                        <p class="text-gray-500">Stock</p>
+                        <p class="font-bold text-gray-800">${item.stockQty}</p>
+                    </div>
+                    <div class="bg-blue-50 p-2 rounded">
+                        <p class="text-gray-500">Pipeline</p>
+                        <p class="font-bold text-blue-600">${item.pipelineQty}</p>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded">
+                        <p class="text-gray-500">SAP Total</p>
+                        <p class="font-bold text-gray-600">${totalSAPAvail}</p>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm">Price: <strong>€${item.price}</strong> = <strong class="text-blue-600">${(item.price * euroRate).toFixed(2)} LYD</strong></p>
+            `;
+
+            document.getElementById('availabilityResult').innerHTML = html;
+            document.getElementById('availabilityCheck').classList.remove('hidden');
+        }
+
+        function addProductToProject() {
+            const projectId = document.getElementById('selectedProject').value;
+            const model = document.getElementById('addProductModel').value;
+            const qty = parseInt(document.getElementById('addProductQty').value) || 1;
+
+            if (!projectId) { alert('Please select a project'); return; }
+            if (!model) { alert('Please select a product'); return; }
+
+            const project = projectsData.find(p => p.id === projectId);
+            const masterData = getMasterInventoryData();
+            const item = masterData.find(m => m.model === model);
+
+            if (!project || !item) { alert('Data error'); return; }
+
+            let source = 'sap';
+            if (item.stockQty >= qty) source = 'stock';
+            else if (item.pipelineQty >= qty) source = 'pipeline';
+
+            const existing = project.products.find(p => p.model === model);
+            if (existing) {
+                existing.qty += qty;
+            } else {
+                project.products.push({ model, qty, source });
+            }
+
+            renderProjects();
+            alert(`Added ${model} (${qty} units) to project`);
+            document.getElementById('addProductModel').value = '';
+            document.getElementById('addProductQty').value = '1';
+            document.getElementById('availabilityCheck').classList.add('hidden');
+        }
+
+        function addToProjectFromMaster(model) {
+            showTab('projects');
+            document.getElementById('addProductModel').value = model;
+            selectedProductForProject = model;
+            checkProductAvailability(model);
+        }
+
+        function getDetailedAvailability(model, requiredQty) {
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            const stock = stockData.find(s => s.model === model);
+            const pipeline = pipelineData.filter(p => p.model === model && p.status !== 'delivered');
+            const sap = sapData.find(s => s.model === model);
+            
+            const stockQty = stock?.qty || 0;
+            const pipelineQty = pipeline.reduce((sum, p) => sum + p.qty, 0);
+            const sapTotalAvail = sap ? (sap.month1Avail || 0) + (sap.month2Avail || 0) + (sap.month3Avail || 0) + (sap.month4Avail || 0) : 0;
+            
+            const price = stock?.price || sap?.price || 0;
+            
+            let remaining = requiredQty;
+            let sources = [];
+            
+            if (remaining > 0) {
+                if (stockQty > 0) {
+                    const fromStock = Math.min(stockQty, remaining);
+                    sources.push({
+                        type: 'stock',
+                        qty: fromStock,
+                        label: `✓ ${fromStock} from Stock (Ready Now)`,
+                        badge: 'bg-gray-800',
+                        available: stockQty
+                    });
+                    remaining -= fromStock;
+                }
+            }
+            
+            if (remaining > 0 && pipeline.length > 0) {
+                for (const po of pipeline) {
+                    if (remaining <= 0) break;
+                    const fromPipeline = Math.min(po.qty, remaining);
+                    const shippingIcon = po.shipping === 'air' ? '✈️' : '🚢';
+                    const shippingText = po.shipping === 'air' ? 'Air Freight' : 'Sea Freight';
+                    const statusText = po.status === 'shipped' ? 'In Transit' : po.status === 'processing' ? 'Processing' : 'Pending';
+                    sources.push({
+                        type: 'pipeline',
+                        qty: fromPipeline,
+                        label: `${shippingIcon} ${fromPipeline} from Pipeline - ${shippingText} (${statusText})`,
+                        sublabel: po.eta ? `ETA: ${po.eta}` : 'ETA: To Be Confirmed',
+                        badge: 'bg-blue-600',
+                        po: po.poNumber,
+                        eta: po.eta,
+                        shipping: po.shipping
+                    });
+                    remaining -= fromPipeline;
+                }
+            }
+            
+            if (remaining > 0 && sap) {
+                const months = [
+                    { key: 'month1Avail', name: sapMonths[0], avail: sap.month1Avail || 0, booked: sap.month1Booked || 0 },
+                    { key: 'month2Avail', name: sapMonths[1], avail: sap.month2Avail || 0, booked: sap.month2Booked || 0 },
+                    { key: 'month3Avail', name: sapMonths[2], avail: sap.month3Avail || 0, booked: sap.month3Booked || 0 },
+                    { key: 'month4Avail', name: sapMonths[3], avail: sap.month4Avail || 0, booked: sap.month4Booked || 0 }
+                ];
+                
+                for (const month of months) {
+                    if (remaining <= 0) break;
+                    if (month.avail > 0) {
+                        const fromSAP = Math.min(month.avail, remaining);
+                        sources.push({
+                            type: 'sap',
+                            qty: fromSAP,
+                            label: `☁️ ${fromSAP} from SAP Booking`,
+                            sublabel: `Available in ${month.name} (${month.avail} total, ${month.booked} already booked)`,
+                            badge: 'bg-gray-600',
+                            month: month.name,
+                            totalAvailInMonth: month.avail
+                        });
+                        remaining -= fromSAP;
+                    }
+                }
+            }
+            
+            if (remaining > 0) {
+                let suggestion = 'Contact Mitsubishi for availability';
+                if (pipeline.length === 0 && sapTotalAvail === 0) {
+                    suggestion = 'No Pipeline or SAP stock - Contact Mitsubishi';
+                }
+                sources.push({
+                    type: 'unavailable',
+                    qty: remaining,
+                    label: `❌ ${remaining} units Not Available`,
+                    sublabel: suggestion,
+                    badge: 'bg-gray-400'
+                });
+            }
+            
+            return {
+                sources,
+                price,
+                priceLYD: price * euroRate,
+                stockQty,
+                pipelineQty,
+                sapTotalAvail,
+                totalAvailable: stockQty + pipelineQty + sapTotalAvail,
+                canFulfill: remaining === 0,
+                shortage: remaining > 0 ? remaining : 0
+            };
+        }
+
+        function viewProject(projectId) {
+            const project = projectsData.find(p => p.id === projectId);
+            if (!project) return;
+
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            const content = document.getElementById('viewProjectContent');
+
+            let productsHTML = project.products.map(p => {
+                const availability = getDetailedAvailability(p.model, p.qty);
+                const totalEUR = availability.price * p.qty;
+                const totalLYD = totalEUR * euroRate;
+                
+                const sourcesHTML = availability.sources.map(s => `
+                    <div class="py-1">
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="${s.badge} text-white px-2 py-0.5 rounded-full">${s.qty}</span>
+                            <span class="font-medium">${s.label}</span>
+                        </div>
+                        ${s.sublabel ? `<div class="text-xs text-gray-500 ml-8 mt-0.5">${s.sublabel}</div>` : ''}
+                    </div>
+                `).join('');
+
+                const statusBadge = availability.canFulfill 
+                    ? '<span class="bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-xs font-bold">✓ Can Fulfill</span>'
+                    : '<span class="bg-white text-gray-800 border-2 border-gray-300 px-2 py-1 rounded-full text-xs font-bold">⚠ Partial</span>';
+
+                return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3">
+                        <div class="font-bold text-gray-900">${p.model}</div>
+                    </td>
+                    <td class="p-3 text-center">
+                        <span class="bg-gray-200 px-3 py-1 rounded-full font-bold">${p.qty}</span>
+                    </td>
+                    <td class="p-3 text-center font-bold">€${availability.price.toLocaleString()}</td>
+                    <td class="p-3 text-center font-bold text-gray-800">€${totalEUR.toLocaleString()}</td>
+                    <td class="p-3 text-center font-bold text-blue-600">${totalLYD.toLocaleString()} LYD</td>
+                    <td class="p-3">
+                        <div class="mb-2">${statusBadge}</div>
+                        <div class="space-y-1">${sourcesHTML}</div>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="removeProductFromProject('${project.id}', '${p.model}')" class="text-gray-500 hover:text-gray-700 p-2">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+
+            if (project.products.length === 0) {
+                productsHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-400">No products added yet</td></tr>';
+            }
+
+            const totalProjectEUR = project.products.reduce((sum, p) => {
+                const availability = getDetailedAvailability(p.model, p.qty);
+                return sum + (availability.price * p.qty);
+            }, 0);
+
+            const allCanFulfill = project.products.every(p => getDetailedAvailability(p.model, p.qty).canFulfill);
+
+            content.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-gray-500 text-sm">Project Name</p>
+                        <p class="font-bold text-lg">${project.name}</p>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-gray-500 text-sm">Customer</p>
+                        <p class="font-bold text-lg">${project.customer}</p>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-gray-500 text-sm">Location</p>
+                        <p class="font-bold text-lg">${project.location || '-'}</p>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-gray-500 text-sm">Overall Status</p>
+                        <p class="font-bold text-lg">${allCanFulfill ? '<span class="text-gray-800">✓ All Available</span>' : '<span class="text-gray-600">⚠ Check Sources</span>'}</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-100 border-l-4 border-blue-500 p-4 rounded mb-4">
+                    <h4 class="font-bold text-gray-800 mb-1"><i class="fas fa-info-circle mr-1"></i> Availability Legend:</h4>
+                    <div class="flex flex-wrap gap-3 text-sm">
+                        <span><span class="bg-gray-800 text-white px-2 py-0.5 rounded-full text-xs">Stock</span> Available in Libya</span>
+                        <span><span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs">Pipeline</span> In Transit/On Order</span>
+                        <span><span class="bg-gray-600 text-white px-2 py-0.5 rounded-full text-xs">SAP</span> Book from Mitsubishi</span>
+                        <span><span class="bg-gray-400 text-white px-2 py-0.5 rounded-full text-xs">N/A</span> Not Available</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto mb-4">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-800 text-white">
+                            <tr>
+                                <th class="text-left p-3">Model</th>
+                                <th class="text-center p-3">Required Qty</th>
+                                <th class="text-center p-3">Unit Price</th>
+                                <th class="text-center p-3">Total €</th>
+                                <th class="text-center p-3">Total LYD</th>
+                                <th class="text-left p-3">Availability & Source</th>
+                                <th class="text-center p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>${productsHTML}</tbody>
+                        ${project.products.length > 0 ? `
+                        <tfoot class="bg-gray-100 font-bold">
+                            <tr>
+                                <td class="p-3" colspan="3">Grand Total</td>
+                                <td class="p-3 text-center text-gray-800">€${totalProjectEUR.toLocaleString()}</td>
+                                <td class="p-3 text-center text-blue-600">${(totalProjectEUR * euroRate).toLocaleString()} LYD</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>` : ''}
+                    </table>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="generateQuotationForProject('${project.id}')" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold">
+                        <i class="fas fa-file-invoice-dollar mr-2"></i> Generate Quotation
+                    </button>
+                    <button onclick="exportProjectExcel('${project.id}')" class="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-900">
+                        <i class="fas fa-file-excel mr-2"></i> Export
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('viewProjectTitle').innerHTML = `<i class="fas fa-folder-open mr-2"></i> ${project.name}`;
+            document.getElementById('viewProjectModal').classList.remove('hidden');
+        }
+
+        function exportProjectExcel(projectId) {
+            const project = projectsData.find(p => p.id === projectId);
+            if (!project) return;
+            
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            let csv = 'Model,Required Qty,Unit Price EUR,Total EUR,Total LYD,Availability Status,Source Details\n';
+            
+            project.products.forEach(p => {
+                const availability = getDetailedAvailability(p.model, p.qty);
+                const totalEUR = availability.price * p.qty;
+                const totalLYD = totalEUR * euroRate;
+                const sourceDetails = availability.sources.map(s => s.label).join(' | ');
+                const status = availability.canFulfill ? 'Can Fulfill' : 'Partial';
+                
+                csv += `${p.model},${p.qty},${availability.price},${totalEUR},${totalLYD.toFixed(2)},${status},"${sourceDetails}"\n`;
+            });
+            
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `project_${project.name}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        function removeProductFromProject(projectId, model) {
+            if (!confirm(`Remove ${model} from project?`)) return;
+            
+            const project = projectsData.find(p => p.id === projectId);
+            if (project) {
+                project.products = project.products.filter(p => p.model !== model);
+                viewProject(projectId);
+                renderProjects();
+            }
+        }
+
+        // ============ QUOTATION ============
+        function loadProjectForQuotation() {
+            const projectId = document.getElementById('quotationProject').value;
+            if (!projectId) return;
+            const project = projectsData.find(p => p.id === projectId);
+            if (project) {
+                document.getElementById('quotationCustomer').value = project.customer;
+                generateQuotation();
+            }
+        }
+
+        function generateQuotationForProject(projectId) {
+            closeModal('viewProjectModal');
+            showTab('quotation');
+            document.getElementById('quotationProject').value = projectId;
+            loadProjectForQuotation();
+        }
+
+        function generateQuotation() {
+            const projectId = document.getElementById('quotationProject').value;
+            const customer = document.getElementById('quotationCustomer').value;
+            const phone = document.getElementById('quotationPhone').value;
+            const email = document.getElementById('quotationEmail').value;
+            const discount = parseFloat(document.getElementById('quotationDiscount').value) || 0;
+            const validity = document.getElementById('quotationValidity').value || 30;
+            const notes = document.getElementById('quotationNotes').value;
+
+            if (!projectId) {
+                document.getElementById('quotationPreview').innerHTML = `
+                    <div class="text-center text-gray-400 py-20">
+                        <i class="fas fa-file-invoice-dollar text-6xl mb-4"></i>
+                        <p>Select a project to generate quotation</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const project = projectsData.find(p => p.id === projectId);
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+            const today = new Date();
+            const validUntil = new Date(today.getTime() + validity * 24 * 60 * 60 * 1000);
+            const quotationNo = 'QT-' + today.getFullYear() + '-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+            let productsHTML = '';
+            let subtotalEUR = 0;
+
+            project.products.forEach((p, index) => {
+                const item = stockData.find(s => s.model === p.model) || sapData.find(s => s.model === p.model);
+                const price = item?.price || 0;
+                const totalEUR = price * p.qty;
+                subtotalEUR += totalEUR;
+
+                productsHTML += `
+                    <tr class="border-b">
+                        <td class="p-2 text-center">${index + 1}</td>
+                        <td class="p-2"><span class="font-bold">${p.model}</span></td>
+                        <td class="p-2 text-center">${p.qty}</td>
+                        <td class="p-2 text-center">€${price.toLocaleString()}</td>
+                        <td class="p-2 text-center font-bold">€${totalEUR.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+
+            const discountAmount = subtotalEUR * (discount / 100);
+            const totalEUR = subtotalEUR - discountAmount;
+            const totalLYD = totalEUR * euroRate;
+
+            document.getElementById('quotationPreview').innerHTML = `
+                <div class="border-2 border-gray-300 rounded-lg overflow-hidden">
+                    <div class="bg-gray-900 text-white p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-2xl font-bold">AL TAGNIA AL HADYTHA (AAC)</h2>
+                                <p class="text-sm text-gray-400">Authorized Mitsubishi Electric Distributor in Libya</p>
+                            </div>
+                            <div class="text-right">
+                                <h3 class="text-xl font-bold">QUOTATION</h3>
+                                <p class="text-sm text-gray-400">${quotationNo}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 border-b bg-gray-50">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-bold text-gray-600 mb-2">Customer Information</h4>
+                                <p class="font-bold text-lg">${customer || project.customer}</p>
+                                ${phone ? `<p class="text-sm text-gray-600"><i class="fas fa-phone mr-1"></i> ${phone}</p>` : ''}
+                                ${email ? `<p class="text-sm text-gray-600"><i class="fas fa-envelope mr-1"></i> ${email}</p>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <p><strong>Date:</strong> ${today.toLocaleDateString('en-US')}</p>
+                                <p><strong>Valid Until:</strong> ${validUntil.toLocaleDateString('en-US')}</p>
+                                <p><strong>Euro Rate:</strong> ${euroRate} LYD</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="p-2">#</th>
+                                    <th class="p-2 text-left">Model</th>
+                                    <th class="p-2">Qty</th>
+                                    <th class="p-2">Unit Price</th>
+                                    <th class="p-2">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>${productsHTML}</tbody>
+                        </table>
+                    </div>
+                    <div class="p-6 bg-gray-50 border-t">
+                        <div class="flex justify-end">
+                            <div class="w-80">
+                                <div class="flex justify-between py-2 border-b">
+                                    <span>Subtotal:</span>
+                                    <span class="font-bold">€${subtotalEUR.toLocaleString()}</span>
+                                </div>
+                                ${discount > 0 ? `
+                                <div class="flex justify-between py-2 border-b text-blue-600">
+                                    <span>Discount (${discount}%):</span>
+                                    <span>-€${discountAmount.toLocaleString()}</span>
+                                </div>` : ''}
+                                <div class="flex justify-between py-2 border-b">
+                                    <span>Total (EUR):</span>
+                                    <span class="font-bold">€${totalEUR.toLocaleString()}</span>
+                                </div>
+                                <div class="flex justify-between py-3 bg-blue-100 px-3 rounded-lg mt-2">
+                                    <span class="font-bold">Total (LYD):</span>
+                                    <span class="font-bold text-xl text-blue-700">${totalLYD.toLocaleString()} LYD</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ${notes ? `
+                    <div class="p-6 border-t">
+                        <h4 class="font-bold text-gray-600 mb-2">Notes:</h4>
+                        <p class="text-sm text-gray-600">${notes}</p>
+                    </div>` : ''}
+                    <div class="p-6 border-t bg-gray-100 text-center text-sm text-gray-500">
+                        <p>Thank you for your business!</p>
+                        <p>AL TAGNIA AL HADYTHA (AAC) - Authorized Mitsubishi Electric Distributor in Libya</p>
+                    </div>
+                </div>
+                <div class="mt-4 flex gap-3 no-print">
+                    <button onclick="activateQuotation('${projectId}')" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-bold">
+                        <i class="fas fa-check-circle mr-2"></i> Activate & Deduct Stock
+                    </button>
+                    <button onclick="printQuotation()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-print mr-2"></i> Print PDF
+                    </button>
+                </div>
+            `;
+        }
+
+        function updateQuotation() { generateQuotation(); }
+        function printQuotation() { window.print(); }
+        function exportQuotationPDF() { window.print(); }
+
+        // ============ ACTIVATE QUOTATION & DEDUCT STOCK ============
+        function activateQuotation(projectId) {
+            const project = projectsData.find(p => p.id === projectId);
+            if (!project) { alert('Project not found'); return; }
+            
+            if (project.products.length === 0) {
+                alert('No products in this project');
+                return;
+            }
+            
+            // Check if all products can be fulfilled
+            let allCanFulfill = true;
+            let deductionPlan = [];
+            
+            for (const product of project.products) {
+                const availability = getDetailedAvailability(product.model, product.qty);
+                if (!availability.canFulfill) {
+                    allCanFulfill = false;
+                }
+                deductionPlan.push({
+                    model: product.model,
+                    qty: product.qty,
+                    sources: availability.sources.filter(s => s.type !== 'unavailable')
+                });
+            }
+            
+            if (!allCanFulfill) {
+                if (!confirm('⚠️ Warning: Some products cannot be fully fulfilled. Do you still want to activate and deduct available quantities?')) {
+                    return;
+                }
+            } else {
+                if (!confirm('✓ All products are available. Activate quotation and deduct from inventory?')) {
+                    return;
+                }
+            }
+            
+            // Perform deductions
+            let deductionLog = [];
+            
+            for (const plan of deductionPlan) {
+                for (const source of plan.sources) {
+                    if (source.type === 'stock') {
+                        // Deduct from Stock
+                        const stockItem = stockData.find(s => s.model === plan.model);
+                        if (stockItem) {
+                            stockItem.qty = Math.max(0, stockItem.qty - source.qty);
+                            stockItem.lastUpdate = new Date().toISOString().split('T')[0];
+                            deductionLog.push(`📦 Stock: ${plan.model} -${source.qty} units`);
+                        }
+                    } else if (source.type === 'pipeline') {
+                        // Deduct from Pipeline (mark as reserved or reduce qty)
+                        const pipelineItem = pipelineData.find(p => p.poNumber === source.po);
+                        if (pipelineItem) {
+                            pipelineItem.qty = Math.max(0, pipelineItem.qty - source.qty);
+                            if (pipelineItem.qty === 0) {
+                                pipelineItem.notes = 'Reserved for ' + project.customer;
+                            }
+                            deductionLog.push(`🚢 Pipeline (${source.po}): ${plan.model} -${source.qty} units`);
+                        }
+                    } else if (source.type === 'sap') {
+                        // Deduct from SAP (move from Available to Booked)
+                        const sapItem = sapData.find(s => s.model === plan.model);
+                        if (sapItem) {
+                            const monthKey = source.month;
+                            let deducted = source.qty;
+                            
+                            // Find which month and deduct
+                            if (monthKey === sapMonths[0] && sapItem.month1Avail >= deducted) {
+                                sapItem.month1Avail -= deducted;
+                                sapItem.month1Booked += deducted;
+                            } else if (monthKey === sapMonths[1] && sapItem.month2Avail >= deducted) {
+                                sapItem.month2Avail -= deducted;
+                                sapItem.month2Booked += deducted;
+                            } else if (monthKey === sapMonths[2] && sapItem.month3Avail >= deducted) {
+                                sapItem.month3Avail -= deducted;
+                                sapItem.month3Booked += deducted;
+                            } else if (monthKey === sapMonths[3] && sapItem.month4Avail >= deducted) {
+                                sapItem.month4Avail -= deducted;
+                                sapItem.month4Booked += deducted;
+                            }
+                            deductionLog.push(`☁️ SAP (${monthKey}): ${plan.model} -${source.qty} units (moved to Booked)`);
+                        }
+                    }
+                }
+            }
+            
+            // Mark project as completed
+            project.status = 'completed';
+            project.activatedAt = new Date().toISOString().split('T')[0];
+            
+            // Refresh all views
+            renderAll();
+            generateQuotation();
+            
+            // Show summary
+            let summary = '✅ Quotation Activated Successfully!\n\n';
+            summary += '📋 Deduction Summary:\n';
+            summary += deductionLog.join('\n');
+            summary += '\n\n📊 Master Inventory has been updated.';
+            
+            alert(summary);
+        }
+
+        // ============ EXCEL IMPORT ============
+        function updateImportHints() {
+            const type = document.getElementById('importType').value;
+            let hints = '';
+            
+            if (type === 'stock') {
+                hints = `
+                    <p class="text-sm">Required columns for <strong>Stock Libya</strong>:</p>
+                    <ul class="text-sm mt-2 space-y-1">
+                        <li>• <strong>Model</strong> - Required</li>
+                        <li>• Description</li>
+                        <li>• Type (VRF/DX/Split/Indoor/Outdoor)</li>
+                        <li>• <strong>Quantity</strong> - Required</li>
+                        <li>• Price (€)</li>
+                    </ul>
+                `;
+            } else if (type === 'pipeline') {
+                hints = `
+                    <p class="text-sm">Required columns for <strong>PO Pipeline</strong>:</p>
+                    <ul class="text-sm mt-2 space-y-1">
+                        <li>• PO Number</li>
+                        <li>• <strong>Model</strong> - Required</li>
+                        <li>• <strong>Quantity</strong> - Required</li>
+                        <li>• ETA Date</li>
+                        <li>• Shipping Type (sea/air)</li>
+                        <li>• Status (pending/processing/shipped/delivered)</li>
+                    </ul>
+                `;
+            } else if (type === 'sap') {
+                hints = `
+                    <p class="text-sm">Required columns for <strong>SAP Availability</strong> (4 Months):</p>
+                    <ul class="text-sm mt-2 space-y-1">
+                        <li>• <strong>Model</strong> - Required</li>
+                        <li>• Description</li>
+                        <li>• <strong>${sapMonths[0]} Available</strong></li>
+                        <li>• ${sapMonths[0]} Booked</li>
+                        <li>• <strong>${sapMonths[1]} Available</strong></li>
+                        <li>• ${sapMonths[1]} Booked</li>
+                        <li>• <strong>${sapMonths[2]} Available</strong></li>
+                        <li>• ${sapMonths[2]} Booked</li>
+                        <li>• <strong>${sapMonths[3]} Available</strong></li>
+                        <li>• ${sapMonths[3]} Booked</li>
+                        <li>• Price (€)</li>
+                    </ul>
+                `;
+            }
+            
+            document.getElementById('hintsContent').innerHTML = hints;
+        }
+
+        function openImportModal(type) {
+            document.getElementById('importModal').classList.remove('hidden');
+            if (type) {
+                document.getElementById('importType').value = type;
+            }
+            updateImportHints();
+            resetImportModal();
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+            resetImportModal();
+        }
+
+        function resetImportModal() {
+            document.getElementById('uploadStep').classList.remove('hidden');
+            document.getElementById('previewStep').classList.add('hidden');
+            document.getElementById('successStep').classList.add('hidden');
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('parseBtn').disabled = true;
+            document.getElementById('excelFile').value = '';
+            parsedData = [];
+            excelHeaders = [];
+            selectedFile = null;
+        }
+
+        function setupDragDrop() {
+            const uploadZone = document.getElementById('uploadZone');
+            if (!uploadZone) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            }, false);
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) handleFile(file);
+        }
+
+        function handleFile(file) {
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
+            document.getElementById('fileInfo').classList.remove('hidden');
+            document.getElementById('parseBtn').disabled = false;
+        }
+
+        function clearFile() {
+            selectedFile = null;
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('parseBtn').disabled = true;
+            document.getElementById('excelFile').value = '';
+        }
+
+        function parseExcelFile() {
+            if (!selectedFile) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    if (jsonData.length < 2) {
+                        alert('File is empty');
+                        return;
+                    }
+
+                    excelHeaders = jsonData[0].map(h => String(h || '').trim());
+                    parsedData = jsonData.slice(1).filter(row => row.length > 0 && row.some(cell => cell !== null && cell !== ''));
+                    showPreview();
+                } catch (error) {
+                    console.error(error);
+                    alert('Error reading file');
+                }
+            };
+            reader.readAsArrayBuffer(selectedFile);
+        }
+
+        function showPreview() {
+            document.getElementById('uploadStep').classList.add('hidden');
+            document.getElementById('previewStep').classList.remove('hidden');
+
+            document.getElementById('rowCount').textContent = parsedData.length;
+            document.getElementById('colCount').textContent = excelHeaders.length;
+
+            document.getElementById('previewHeader').innerHTML = excelHeaders.map(h => `<th class="p-2 text-left text-xs">${h || '-'}</th>`).join('');
+
+            document.getElementById('previewBody').innerHTML = parsedData.slice(0, 10).map(row => `
+                <tr class="border-b hover:bg-gray-50">
+                    ${excelHeaders.map((_, i) => `<td class="p-2 text-xs">${row[i] !== undefined && row[i] !== null ? row[i] : '-'}</td>`).join('')}
+                </tr>
+            `).join('');
+
+            setupColumnMapping();
+        }
+
+        function setupColumnMapping() {
+            const importType = document.getElementById('importType').value;
+            let fields = [];
+
+            if (importType === 'stock') {
+                fields = [
+                    { key: 'model', label: 'Model', required: true },
+                    { key: 'desc', label: 'Description' },
+                    { key: 'type', label: 'Type' },
+                    { key: 'qty', label: 'Quantity', required: true },
+                    { key: 'price', label: 'Price €' }
+                ];
+            } else if (importType === 'pipeline') {
+                fields = [
+                    { key: 'poNumber', label: 'PO Number' },
+                    { key: 'model', label: 'Model', required: true },
+                    { key: 'qty', label: 'Quantity', required: true },
+                    { key: 'eta', label: 'ETA Date' },
+                    { key: 'shipping', label: 'Shipping Type' },
+                    { key: 'status', label: 'Status' }
+                ];
+            } else if (importType === 'sap') {
+                fields = [
+                    { key: 'model', label: 'Model', required: true },
+                    { key: 'desc', label: 'Description' },
+                    { key: 'month1Avail', label: `${sapMonths[0]} Avail`, required: true },
+                    { key: 'month1Booked', label: `${sapMonths[0]} Booked` },
+                    { key: 'month2Avail', label: `${sapMonths[1]} Avail` },
+                    { key: 'month2Booked', label: `${sapMonths[1]} Booked` },
+                    { key: 'month3Avail', label: `${sapMonths[2]} Avail` },
+                    { key: 'month3Booked', label: `${sapMonths[2]} Booked` },
+                    { key: 'month4Avail', label: `${sapMonths[3]} Avail` },
+                    { key: 'month4Booked', label: `${sapMonths[3]} Booked` },
+                    { key: 'price', label: 'Price €' }
+                ];
+            }
+
+            const autoMatch = (fieldKey) => {
+                const patterns = {
+                    'model': ['model', 'code', 'product', 'item', 'sku', 'part'],
+                    'desc': ['desc', 'description', 'name'],
+                    'type': ['type', 'category'],
+                    'qty': ['qty', 'quantity', 'stock', 'amount'],
+                    'price': ['price', 'cost', 'value', 'euro', 'eur', '€'],
+                    'poNumber': ['po', 'order', 'number'],
+                    'eta': ['eta', 'date', 'arrival', 'delivery'],
+                    'shipping': ['ship', 'freight', 'delivery', 'transport'],
+                    'status': ['status', 'state', 'condition'],
+                    'month1Avail': [sapMonths[0].toLowerCase(), 'avail', 'available', 'free'],
+                    'month1Booked': ['book', 'reserved', 'allocated'],
+                    'month2Avail': [sapMonths[1].toLowerCase()],
+                    'month2Booked': ['book'],
+                    'month3Avail': [sapMonths[2].toLowerCase()],
+                    'month3Booked': ['book'],
+                    'month4Avail': [sapMonths[3].toLowerCase()],
+                    'month4Booked': ['book']
+                };
+
+                const searchPatterns = patterns[fieldKey] || [];
+                for (let i = 0; i < excelHeaders.length; i++) {
+                    const header = excelHeaders[i].toLowerCase();
+                    for (const pattern of searchPatterns) {
+                        if (header.includes(pattern.toLowerCase())) {
+                            return i;
+                        }
+                    }
+                }
+                return '';
+            };
+
+            document.getElementById('mappingFields').innerHTML = fields.map(field => {
+                const autoMatchIndex = autoMatch(field.key);
+                return `
+                <div class="flex items-center gap-2">
+                    <label class="w-32 text-sm font-bold ${field.required ? 'text-blue-600' : ''}">${field.label}${field.required ? '*' : ''}:</label>
+                    <select id="map_${field.key}" class="flex-1 p-2 border rounded text-sm">
+                        <option value="">-- Skip --</option>
+                        ${excelHeaders.map((h, i) => `<option value="${i}" ${autoMatchIndex === i ? 'selected' : ''}>${h || 'Column ' + (i + 1)}</option>`).join('')}
+                    </select>
+                </div>
+            `}).join('');
+        }
+
+        function backToUpload() {
+            document.getElementById('previewStep').classList.add('hidden');
+            document.getElementById('uploadStep').classList.remove('hidden');
+        }
+
+        function getColumnValue(row, key) {
+            const select = document.getElementById('map_' + key);
+            if (!select || select.value === '') return null;
+            const value = row[parseInt(select.value)];
+            return value !== undefined && value !== null ? value : null;
+        }
+
+        function confirmImport() {
+            const importType = document.getElementById('importType').value;
+            let count = 0;
+
+            try {
+                parsedData.forEach(row => {
+                    const model = getColumnValue(row, 'model');
+                    if (!model) return;
+
+                    if (importType === 'stock') {
+                        const existing = stockData.find(s => s.model === String(model));
+                        const newItem = {
+                            model: String(model).trim(),
+                            desc: String(getColumnValue(row, 'desc') || ''),
+                            type: String(getColumnValue(row, 'type') || 'VRF'),
+                            qty: parseInt(getColumnValue(row, 'qty')) || 0,
+                            price: parseFloat(getColumnValue(row, 'price')) || 0,
+                            lastUpdate: new Date().toISOString().split('T')[0]
+                        };
+                        if (existing) Object.assign(existing, newItem);
+                        else stockData.push(newItem);
+                        count++;
+                    } else if (importType === 'pipeline') {
+                        pipelineData.push({
+                            poNumber: String(getColumnValue(row, 'poNumber') || 'PO-' + Date.now()),
+                            model: String(model).trim(),
+                            qty: parseInt(getColumnValue(row, 'qty')) || 0,
+                            orderDate: new Date().toISOString().split('T')[0],
+                            eta: String(getColumnValue(row, 'eta') || ''),
+                            shipping: String(getColumnValue(row, 'shipping') || 'sea').toLowerCase().includes('air') ? 'air' : 'sea',
+                            status: String(getColumnValue(row, 'status') || 'pending').toLowerCase(),
+                            notes: ''
+                        });
+                        count++;
+                    } else if (importType === 'sap') {
+                        const existing = sapData.find(s => s.model === String(model));
+                        const newItem = {
+                            model: String(model).trim(),
+                            desc: String(getColumnValue(row, 'desc') || ''),
+                            type: 'VRF',
+                            month1Avail: parseInt(getColumnValue(row, 'month1Avail')) || 0,
+                            month1Booked: parseInt(getColumnValue(row, 'month1Booked')) || 0,
+                            month2Avail: parseInt(getColumnValue(row, 'month2Avail')) || 0,
+                            month2Booked: parseInt(getColumnValue(row, 'month2Booked')) || 0,
+                            month3Avail: parseInt(getColumnValue(row, 'month3Avail')) || 0,
+                            month3Booked: parseInt(getColumnValue(row, 'month3Booked')) || 0,
+                            month4Avail: parseInt(getColumnValue(row, 'month4Avail')) || 0,
+                            month4Booked: parseInt(getColumnValue(row, 'month4Booked')) || 0,
+                            price: parseFloat(getColumnValue(row, 'price')) || 0
+                        };
+                        if (existing) Object.assign(existing, newItem);
+                        else sapData.push(newItem);
+                        count++;
+                    }
+                });
+
+                document.getElementById('previewStep').classList.add('hidden');
+                document.getElementById('successStep').classList.remove('hidden');
+                document.getElementById('importSummary').textContent = `Successfully imported ${count} rows`;
+
+                renderAll();
+            } catch (error) {
+                console.error(error);
+                alert('Import error: ' + error.message);
+            }
+        }
+
+        // ============ MODALS ============
+        function openAddStockModal() {
+            document.getElementById('addStockModal').classList.remove('hidden');
+        }
+
+        function openAddPipelineModal() {
+            document.getElementById('addPipelineModal').classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function addStock() {
+            const model = document.getElementById('newStockModel').value;
+            if (!model) { alert('Please enter model'); return; }
+
+            stockData.push({
+                model: model,
+                desc: document.getElementById('newStockDesc').value,
+                type: document.getElementById('newStockType').value,
+                qty: parseInt(document.getElementById('newStockQty').value) || 0,
+                price: parseFloat(document.getElementById('newStockPrice').value) || 0,
+                lastUpdate: new Date().toISOString().split('T')[0]
+            });
+
+            renderAll();
+            closeModal('addStockModal');
+            
+            document.getElementById('newStockModel').value = '';
+            document.getElementById('newStockDesc').value = '';
+            document.getElementById('newStockQty').value = '';
+            document.getElementById('newStockPrice').value = '';
+            
+            alert('Stock item added!');
+        }
+
+        function addPipeline() {
+            const model = document.getElementById('newPipelineModel').value;
+            if (!model) { alert('Please enter model'); return; }
+
+            pipelineData.push({
+                poNumber: document.getElementById('newPipelinePO').value || 'PO-' + Date.now(),
+                model: model,
+                qty: parseInt(document.getElementById('newPipelineQty').value) || 0,
+                orderDate: new Date().toISOString().split('T')[0],
+                eta: document.getElementById('newPipelineETA').value,
+                shipping: document.getElementById('newPipelineShipping').value,
+                status: document.getElementById('newPipelineStatus').value,
+                notes: document.getElementById('newPipelineNotes').value
+            });
+
+            renderAll();
+            closeModal('addPipelineModal');
+            
+            document.getElementById('newPipelinePO').value = '';
+            document.getElementById('newPipelineModel').value = '';
+            document.getElementById('newPipelineQty').value = '';
+            document.getElementById('newPipelineETA').value = '';
+            document.getElementById('newPipelineNotes').value = '';
+            
+            alert('Pipeline order added!');
+        }
+
+        function editStock(model) {
+            const item = stockData.find(s => s.model === model);
+            if (item) {
+                const newQty = prompt('New quantity:', item.qty);
+                if (newQty !== null) {
+                    item.qty = parseInt(newQty) || 0;
+                    item.lastUpdate = new Date().toISOString().split('T')[0];
+                    renderAll();
+                }
+            }
+        }
+
+        function deleteStock(model) {
+            if (confirm('Delete ' + model + '?')) {
+                stockData = stockData.filter(s => s.model !== model);
+                renderAll();
+            }
+        }
+
+        function editPipeline(poNumber) {
+            const item = pipelineData.find(p => p.poNumber === poNumber);
+            if (item) {
+                const newStatus = prompt('Status (pending/processing/shipped/delivered):', item.status);
+                if (newStatus) {
+                    item.status = newStatus;
+                    renderAll();
+                }
+            }
+        }
+
+        function exportMasterInventory() {
+            const data = getMasterInventoryData();
+            if (data.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            const euroRate = parseFloat(document.getElementById('euroRate').value) || 5.35;
+
+            let csv = 'Model,Description,Stock,Pipeline,M1 Avail,M1 Booked,M2 Avail,M2 Booked,M3 Avail,M3 Booked,M4 Avail,M4 Booked,Price EUR,Price LYD\n';
+            data.forEach(item => {
+                csv += `${item.model},"${item.desc}",${item.stockQty},${item.pipelineQty},${item.month1Avail},${item.month1Booked},${item.month2Avail},${item.month2Booked},${item.month3Avail},${item.month3Booked},${item.month4Avail},${item.month4Booked},${item.price},${(item.price * euroRate).toFixed(2)}\n`;
+            });
+
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'master_inventory_' + new Date().toISOString().split('T')[0] + '.csv';
+            link.click();
+        }
+
+        document.getElementById('euroRate').addEventListener('change', function() {
+            renderMasterInventory();
+            renderProjects();
+            generateQuotation();
+        });
+
+        document.querySelectorAll('.fixed').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
